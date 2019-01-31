@@ -25,21 +25,28 @@ for number in numbers:
     response = requests.get(url, cookies=jar, stream=True)
     response.raise_for_status()
     
-    bytes_to_receive = int(response.headers["Content-Length"])
+    if "Content-Length" in response.headers:
+        bytes_to_receive = int(response.headers["Content-Length"])
+    else:
+        bytes_to_receive = None
 
     with open(name, "wb") as f:
-        bar = Bar("Downloading..", fill="@", 
+        if bytes_to_receive:
+            bar = Bar("Downloading..", fill="@", 
                 suffix="%(percent)d%%",
                 max=100)
+        else:
+            print("Cannot show progress bar because filesize is unknown.")
 
         bytes_read = 0
-        for block in response.iter_content():
+        for block in response.iter_content(32 * 1024):
             bytes_read += len(block)  
             f.write(block)
 
-            if bytes_read >= bytes_to_receive / 100:
+            if bytes_to_receive and bytes_read >= bytes_to_receive / 100:
                 bar.next()
                 bytes_read = 0
             
-        bar.finish()
+        if bytes_to_receive:
+            bar.finish()
 
